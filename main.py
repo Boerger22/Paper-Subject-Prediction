@@ -289,7 +289,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser("Script to train and predict subjects of paper.")
 
     parser.add_argument(
-        "--train",
+        "-train",
+        action="store_true",
         default=argparse.SUPPRESS,
         help="Depicts whether a new model should be trained.",
     )

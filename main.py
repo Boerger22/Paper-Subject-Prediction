@@ -269,8 +269,8 @@ def predict_data(model: keras.Model, generator, labels, encoding):
     labels : pandas.Series
         The ground truth labels (paper subjects) of each paper from the cora.content file.
 
-    epochs : int
-        Number of epochs the model is trained each fold.
+    encoding: preprocessing.LabelBinarizer
+        Encoder used in order to map subject string to numerical target (one-hot encoding).
     """
 
     all_predictions = model.predict(generator.flow(generator.node_list))

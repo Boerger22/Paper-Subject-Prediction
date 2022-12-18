@@ -278,7 +278,7 @@ def predict_data(model: keras.Model, generator, labels, encoding):
 
     predicted_subjects = pd.DataFrame({"Paper_ID": labels.index, "Predicted": predictions})
 
-    predicted_subjects.to_csv('predictions.tsv', sep="\t")
+    predicted_subjects.to_csv('save/predictions.tsv', sep="\t")
 
     score = accuracy_score(labels, predictions, normalize=True)
     print("Subset accuracy: {}".format(score))

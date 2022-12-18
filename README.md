@@ -14,7 +14,7 @@ Thus, we can use the Cora dataset to model a network and then use a neural netwo
 
 # Approach in more detail
 
-We first load the two files of the Cora dataset and create a network based on this information. Then, we map the subject strings to numerical values to be able to learn and predict values instead of dealing with strings. For this purpose, we use the one-hot encoding of the different subjects. Afterward, we define a GCN model and train it with the network. Thereby, we use 10-fold cross-validation to estimate the performance of the network. For each fold, we train the network for 100 epochs. Once the model is trained, we compute the average accuracy across all 10 folds and save the trained model in `\save\model\`. In the end, we use the trained model to predict the whole network, which we save as a tab-separated values file in `\save\` with format: `<paper_id> <predicted_class_label>`. We also compute the subset accuracy of the trained model.
+We first load the two files of the Cora dataset and create a network based on this information. Then, we map the subject strings to numerical values to be able to learn and predict values instead of dealing with strings. For this purpose, we use the one-hot encoding of the different subjects. Afterward, we define a GCN model and train it with the network. Thereby, we use 10-fold cross-validation to estimate the performance of the network. For each fold, we train the network for 100 epochs. Once the model is trained, we compute the average accuracy across all 10 folds and save the trained model in `save\model\`. In the end, we use the trained model to predict the whole network, which we save as a tab-separated values file in `save\` with format: `<paper_id> <predicted_class_label>`. We also compute the subset accuracy of the trained model.
 
 After training our model for 100 epochs, we achieve a subset accuracy of about 0.9287. 
 
@@ -43,8 +43,8 @@ However, if you want to train a new model, you need to use the `-train` argument
 ```
 python main.py -train
 ```
-This trains a new GCN Model for 100 epochs and saves the model to `\save\model\`.
+This trains a new GCN Model for 100 epochs and saves the model to `save\model\`.
 
 <br>
 
-When both commands are executed, either a new model is trained or the trained model in `\save\model\` is used to predict the subjects of the paper of the Cora dataset. Furthermore, the script calculates the subset accuracy based on the model and stores the predictions are saved in `\save\` as a .tsv file in the format: `<paper_id> <class_label>`
+When both commands are executed, either a new model is trained or the trained model in `save\model\` is used to predict the subjects of the paper of the Cora dataset. Furthermore, the script calculates the subset accuracy based on the model and stores the predictions are saved in `save\` as a .tsv file in the format: `<paper_id> <class_label>`

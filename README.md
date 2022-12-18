@@ -20,7 +20,7 @@ After training our model for 100 epochs, we achieve a subset accuracy of about 0
 
 # Requirements
 
-- python (<= v.3.9)
+- python (>=v3.8, <v3.9)
 - keras
 - tensorflow
 - networkx

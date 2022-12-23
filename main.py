@@ -17,6 +17,64 @@ from stellargraph.layer import GCN
 from stellargraph.mapper import FullBatchNodeGenerator
 
 
+def main():
+    # Add cli parameters
+    parser = argparse.ArgumentParser("Script to train and predict subjects of paper.")
+
+    parser.add_argument("--dataset_path", type=str, default="./dataset/")
+    parser.add_argument("--model_path", type=str, default="./save/model/")
+    parser.add_argument("--prediction_path", type=str, default="./save/")
+
+    subparsers = parser.add_subparsers(dest="mode")
+    train_parser = subparsers.add_parser("train")
+    train_parser.add_argument("--epochs", type=int, default=100)
+    train_parser.add_argument("--seed", type=int, default=123)
+    test_parser = subparsers.add_parser("test")
+
+    args = parser.parse_args()
+
+    if args.mode == "train":
+        # seeding for training
+        python_random.seed(args.seed)
+        tf.random.set_seed(args.seed)
+
+    # load data first
+    citations, word_attributes, labels = load_data(args.dataset_path)
+
+    # get number of features
+    num_features = len(labels.unique())
+
+    # fit encoding of subjects (strings) to numerical target (one-hot encoding)
+    encoding = preprocessing.LabelBinarizer()
+    encoding.fit_transform(labels)
+
+    # create generator based on citation network and word attributes
+    generator = create_generator(citations, word_attributes)
+
+    # train the model if necessary, otherwise try to load model from file
+    if args.mode == "train":
+        # create model, compile it and train it
+        model, fold_accuracies = train_model(generator, labels, encoding, num_features, args.epochs)
+
+        # printing
+        print("Average accuracy over all folds: {}".format(round(sum(fold_accuracies) / len(fold_accuracies), 4)))
+
+        # save model
+        model.save(args.model_path)
+    elif args.mode == "test":
+        # try to load model
+        try:
+            model = keras.models.load_model(args.model_path)
+        except OSError:
+            print("Could not load model. Please make sure that there is a correct model in the /save/model/ directory.")
+            exit()
+    else:
+        print("Please specify a valid argument.")
+        exit()
+
+    predict_data(model, generator, labels, encoding, args.prediction_path)
+
+
 def load_data(dataset_path):
     """
     Loads the cora dataset, renames the columns and extracts the features. 
@@ -262,58 +320,4 @@ def predict_data(model: keras.Model, generator, labels, encoding, prediction_pat
 
 
 if __name__ == "__main__":
-    # Add cli parameters
-    parser = argparse.ArgumentParser("Script to train and predict subjects of paper.")
-
-    parser.add_argument("--dataset_path", type=str, default="./dataset/")
-    parser.add_argument("--model_path", type=str, default="./save/model/")
-    parser.add_argument("--prediction_path", type=str, default="./save/")
-
-    subparsers = parser.add_subparsers(dest="mode")
-    train_parser = subparsers.add_parser("train")
-    train_parser.add_argument("--epochs", type=int, default=100)
-    train_parser.add_argument("--seed", type=int, default=123)
-    test_parser = subparsers.add_parser("test")
-
-    args = parser.parse_args()
-
-    if args.mode == "train":
-        # seeding for training
-        python_random.seed(args.seed)
-        tf.random.set_seed(args.seed)
-
-    # load data first
-    citations, word_attributes, labels = load_data(args.dataset_path)
-
-    # get number of features
-    num_features = len(labels.unique())
-
-    # fit encoding of subjects (strings) to numerical target (one-hot encoding)
-    encoding = preprocessing.LabelBinarizer()
-    encoding.fit_transform(labels)
-
-    # create generator based on citation network and word attributes
-    generator = create_generator(citations, word_attributes)
-
-    # train the model if necessary, otherwise try to load model from file
-    if args.mode == "train":
-        # create model, compile it and train it
-        model, fold_accuracies = train_model(generator, labels, encoding, num_features, args.epochs)
-
-        # printing
-        print("Average accuracy over all folds: {}".format(round(sum(fold_accuracies) / len(fold_accuracies), 4)))
-
-        # save model
-        model.save(args.model_path)
-    elif args.mode == "test":
-        # try to load model
-        try:
-            model = keras.models.load_model(args.model_path)
-        except OSError:
-            print("Could not load model. Please make sure that there is a correct model in the /save/model/ directory.")
-            exit()
-    else:
-        print("Please specify a valid argument.")
-        exit()
-
-    predict_data(model, generator, labels, encoding, args.prediction_path)
+    main()

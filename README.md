@@ -32,18 +32,20 @@ See `requirements.txt` for used versions
 
 # How to run
 
-If you want to use the pre-trained model you can just execute the main file
+If you want to use a pre-trained model you can just execute the main file with the following arguments, where the * indicates optional parameters that have default values:
 ```
-python main.py
+python main.py test --dataset_path* dataset/ --model_path* save/model/ --prediction_path* save/
 ```
+
+Thereby, a keras model is loaded from the specified path and tested on the dataset. The result is written to the prediction path.
 
 <br>
 
-However, if you want to train a new model, you need to use the `-train` argument
+However, if you want to train a new model, you need to use the `train` argument with the following parameters:
 ```
-python main.py -train
+python main.py train --epochs* 100 --seed 123 --dataset_path* dataset/ --model_path* save/model/ --prediction_path* save/
 ```
-This trains a new GCN Model for 100 epochs and saves the model to `save\model\`.
+This trains a new GCN Model for the specified amount of epochs and saves the model to the defined path. Furthermore, a pre-defined seed can be used.
 
 <br>
 

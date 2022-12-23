@@ -17,13 +17,29 @@ from stellargraph.layer import GCN
 from stellargraph.mapper import FullBatchNodeGenerator
 
 
-def main(training):
-    # seeding
-    python_random.seed(123)
-    tf.random.set_seed(123)
+def main():
+    # Add cli parameters
+    parser = argparse.ArgumentParser("Script to train and predict subjects of paper.")
+
+    parser.add_argument("--dataset_path", type=str, default="./dataset/")
+    parser.add_argument("--model_path", type=str, default="./save/model/")
+    parser.add_argument("--prediction_path", type=str, default="./save/")
+
+    subparsers = parser.add_subparsers(dest="mode")
+    train_parser = subparsers.add_parser("train")
+    train_parser.add_argument("--epochs", type=int, default=100)
+    train_parser.add_argument("--seed", type=int, default=123)
+    test_parser = subparsers.add_parser("test")
+
+    args = parser.parse_args()
+
+    if args.mode == "train":
+        # seeding for training
+        python_random.seed(args.seed)
+        tf.random.set_seed(args.seed)
 
     # load data first
-    citations, word_attributes, labels = load_data()
+    citations, word_attributes, labels = load_data(args.dataset_path)
 
     # get number of features
     num_features = len(labels.unique())
@@ -36,28 +52,38 @@ def main(training):
     generator = create_generator(citations, word_attributes)
 
     # train the model if necessary, otherwise try to load model from file
-    if training:
-        model, fold_accuracies = train_model(generator, labels, encoding, num_features)
+    if args.mode == "train":
+        # create model, compile it and train it
+        model, fold_accuracies = train_model(generator, labels, encoding, num_features, args.epochs)
 
-        # Printing
+        # printing
         print("Average accuracy over all folds: {}".format(round(sum(fold_accuracies) / len(fold_accuracies), 4)))
 
         # save model
-        model.save("save/model/")
-    else:
+        model.save(args.model_path)
+    elif args.mode == "test":
         # try to load model
         try:
-            model = keras.models.load_model("save/model/")
+            model = keras.models.load_model(args.model_path)
         except OSError:
             print("Could not load model. Please make sure that there is a correct model in the /save/model/ directory.")
             exit()
+    else:
+        print("Please specify a valid argument.")
+        exit()
 
-    predict_data(model, generator, labels, encoding)
+    predict_data(model, generator, labels, encoding, args.prediction_path)
 
 
-def load_data():
+def load_data(dataset_path):
     """
     Loads the cora dataset, renames the columns and extracts the features. 
+
+    Parameters
+    ----------
+    dataset_path : str
+        Contains the path to the Cora dataset.
+
 
     Returns
     -------
@@ -71,14 +97,14 @@ def load_data():
         The ground truth labels (paper subjects) of each paper from the cora.content file.
     """
 
-    citations = pd.read_csv("dataset/cora.cites", sep="\t", header=None, names=["target", "source"])
+    citations = pd.read_csv(dataset_path + "cora.cites", sep="\t", header=None, names=["target", "source"])
     citations["label"] = "cites"
 
     # rename columns of word attributes
     word_attributes = ["w_{}".format(i) for i in range(1, 1434)]
 
     column_names = word_attributes + ['subject']
-    papers = pd.read_csv("dataset/cora.content", sep="\t", header=None, names=column_names)
+    papers = pd.read_csv(dataset_path + "cora.content", sep="\t", header=None, names=column_names)
     word_attributes = papers[word_attributes]
 
     labels = papers["subject"]
@@ -156,7 +182,7 @@ def create_model(generator, num_features) -> Model:
     return model
 
 
-def train_model(generator, labels, encoding, num_features, epochs: int = 100):
+def train_model(generator, labels, encoding, num_features, epochs):
     """
     Parameters
     ----------
@@ -190,6 +216,8 @@ def train_model(generator, labels, encoding, num_features, epochs: int = 100):
     # initialize folds
     cv = KFold(n_splits=10, random_state=1, shuffle=True)
 
+    fold = 1
+
     for train, test in cv.split(labels, labels):
         # each fold depicts indices for training set and test set
 
@@ -209,8 +237,11 @@ def train_model(generator, labels, encoding, num_features, epochs: int = 100):
         model = create_model(generator, num_features)
 
         # train the model on the respective fold and save accuracy during the performance of the model on the test set
+        print("Training the model on fold {}.".format(fold))
         accuracy = train_fold(model, training_generator, test_generator, epochs)
         fold_accuracies.append(accuracy)
+
+        fold += 1
 
     return model, fold_accuracies
 
@@ -240,6 +271,7 @@ def train_fold(model: keras.Model, training_generator, test_generator, epochs):
         Accuracy of the model evaluated on the test set of the current fold.
 
     """
+
     model.fit(
         training_generator,
         epochs=epochs,
@@ -254,7 +286,7 @@ def train_fold(model: keras.Model, training_generator, test_generator, epochs):
     return fold_accuracy
 
 
-def predict_data(model: keras.Model, generator, labels, encoding):
+def predict_data(model: keras.Model, generator, labels, encoding, prediction_path):
     """
     Predicts the whole data set and computes the subset accuracy.
 
@@ -271,6 +303,9 @@ def predict_data(model: keras.Model, generator, labels, encoding):
 
     encoding: preprocessing.LabelBinarizer
         Encoder used in order to map subject string to numerical target (one-hot encoding).
+
+    prediction_path : str
+        Contains the path for saving the predictions.
     """
 
     all_predictions = model.predict(generator.flow(generator.node_list))
@@ -278,27 +313,11 @@ def predict_data(model: keras.Model, generator, labels, encoding):
 
     predicted_subjects = pd.DataFrame({"Paper_ID": labels.index, "Predicted": predictions})
 
-    predicted_subjects.to_csv('save/predictions.tsv', sep="\t")
+    predicted_subjects.to_csv(prediction_path + 'predictions.tsv', sep="\t")
 
     score = accuracy_score(labels, predictions, normalize=True)
     print("Subset accuracy: {}".format(score))
 
 
 if __name__ == "__main__":
-    # Add cli parameters
-    parser = argparse.ArgumentParser("Script to train and predict subjects of paper.")
-
-    parser.add_argument(
-        "-train",
-        action="store_true",
-        default=argparse.SUPPRESS,
-        help="Depicts whether a new model should be trained.",
-    )
-
-    training = False
-    args = parser.parse_args()
-
-    if "train" in args:
-        training = True
-
-    main(training)
+    main()
